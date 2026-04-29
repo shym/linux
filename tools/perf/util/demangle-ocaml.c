@@ -18,6 +18,9 @@ static const char *caml_prefix = "caml";
 static const size_t caml_prefix_len = 4;
 
 /* mangled flat OCaml symbols start with "caml" followed by an upper-case letter */
+/* CR On a static function, maybe the ocaml_ prefix is not necessary; maybe the
+ * _mangled suffix could be dropped also, to be uniform with is_structured (or
+ * vice versa) */
 static bool
 ocaml_is_flat_mangled(const char *sym)
 {
@@ -97,6 +100,7 @@ ocaml_demangle_flat(const char *sym)
 static const char *structured_prefix = "_Caml";
 static const size_t structured_prefix_len = 5;
 
+/* CR On a static function, maybe the ocaml_ prefix is not necessary */
 static bool
 ocaml_is_structured(const char *sym)
 {
@@ -108,6 +112,9 @@ parse_decimal(const char *sym, int len, int *pos)
 {
 	int val = 0;
 	int start = *pos;
+        /* CR Nitpick: as we need a local var anyway, why not use it to keep the
+         * current position during the function run, so that we avoid many
+         * pointer dereferencing? */
 
 	while (*pos < len && sym[*pos] >= '0' && sym[*pos] <= '9') {
 		val = val * 10 + (sym[*pos] - '0');
@@ -127,6 +134,7 @@ parse_base26(const char *sym, int len, int *pos)
 {
 	int val = 0;
 	int start = *pos;
+        /* CR Nitpick: same as above */
 
 	while (*pos < len && sym[*pos] >= 'A' && sym[*pos] <= 'Z') {
 		val = val * 26 + (sym[*pos] - 'A');
@@ -168,6 +176,8 @@ decode_universal(const char *payload, int payload_len)
 {
 	int sep = -1;
 	int i;
+        /* CR How about using the names esc_pos and esc_len, for uniformity with
+         * raw? */
 	int escaped_len;
 	const char *raw;
 	int raw_len;
@@ -176,6 +186,9 @@ decode_universal(const char *payload, int payload_len)
 	int out = 0;
 	char *result;
 
+        /* CR It could look beyond payload_len (but still no risk of segfault)
+         * in ill-formed cases but I'd suggest to use strchr there and then
+         * check it didn't overflow */
 	for (i = 0; i < payload_len; i++) {
 		if (payload[i] == '_') {
 			sep = i;
@@ -199,6 +212,10 @@ decode_universal(const char *payload, int payload_len)
 		if (skip < 0)
 			goto fail;
 
+                /* CR Why not memcpy?
+                 * The case when there are less than skip characters available
+                 * in raw could be handled as an error, maybe wrapped into the
+                 * test above */
 		/* Copy 'skip' raw characters to output */
 		for (i = 0; i < skip && raw_pos < raw_len; i++)
 			result[out++] = raw[raw_pos++];
@@ -214,6 +231,7 @@ decode_universal(const char *payload, int payload_len)
 		}
 	}
 
+        /* CR Why not memcpy? */
 	/* Copy remaining raw characters */
 	while (raw_pos < raw_len)
 		result[out++] = raw[raw_pos++];
@@ -250,6 +268,7 @@ decode_ident(const char *sym, int len, int *pos)
 			return NULL;
 		memcpy(result, sym + *pos, ident_len);
 		result[ident_len] = '\0';
+                /* CR those next two lines could be shared on the two cases */
 		*pos += ident_len;
 		return result;
 	}
@@ -296,6 +315,12 @@ ocaml_demangle_structured(const char *sym)
 {
 	int len = strlen(sym);
 	int pos = structured_prefix_len;
+        /* CR I'm missing a link between the comment and the chosen formula: 9
+         * doesn't appear in the formula, for instance */
+        /* CR Would it be worth to write it in a style close the LLVM demangler,
+         * with utility functions similar to Buffer.add_char and add_string,
+         * with a realloc if needed? It might improve on legibility of the whole
+         * code as a nice side effect */
 	/*
 	 * Each tag can expand to at most 9 chars ("{partial}" is longest label)
 	 * plus decoded identifier plus separator. Use 4x input length as a safe
@@ -322,6 +347,8 @@ ocaml_demangle_structured(const char *sym)
 
 		if (!is_structured_tag(tag))
 			goto fail;
+                /* CR In the addr2line code, the suffixes that are always added
+                 * in the mangler are accepted there */
 
 		pos++;
 
@@ -331,6 +358,7 @@ ocaml_demangle_structured(const char *sym)
 				goto fail;
 			result[out++] = '.';
 		}
+                /* CR move this into the above 'then' branch */
 		first = false;
 
 		if (tag == 'I') {
@@ -342,6 +370,9 @@ ocaml_demangle_structured(const char *sym)
 			continue;
 		}
 
+                /* CR I would find it a bit nicer if there was no intermediate
+                 * allocation in decode_ident and decode_ident filled the final
+                 * buffer directly */
 		/* All other tags have an encoded identifier payload */
 		ident = decode_ident(sym, len, &pos);
 		if (!ident)

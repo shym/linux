@@ -56,6 +56,8 @@ static int test__demangle_ocaml(struct test_suite *test __maybe_unused, int subt
 		/* $ followed by non-hex chars is kept literal */
 		{ "camlFoo__bar$gz",
 		  "Foo.bar$gz" },
+                /* CR with which compiler you get this for-pack prefix? I see
+                 * something different on the various compilers I tried */
 		/* for-pack prefix: unit Baz inside pack Foo.Bar */
 		{ "camlBaz__Foo__Bar__init_0",
 		  "Baz.Foo.Bar.init_0" },
