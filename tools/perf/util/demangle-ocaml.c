@@ -110,10 +110,9 @@ parse_decimal(const char *sym, int len, int *pos)
 	int start = *pos;
 
 	while (*pos < len && sym[*pos] >= '0' && sym[*pos] <= '9') {
-		/* Overflow check before multiply */
-		if (val > STRUCTURED_MAX_LEN / 10)
-			return -1;
 		val = val * 10 + (sym[*pos] - '0');
+		/* Overflow check: the bound is small enough compared the max
+		 * int that we don't need to check before the multiplication */
 		if (val > STRUCTURED_MAX_LEN)
 			return -1;
 		(*pos)++;
@@ -130,9 +129,9 @@ parse_base26(const char *sym, int len, int *pos)
 	int start = *pos;
 
 	while (*pos < len && sym[*pos] >= 'A' && sym[*pos] <= 'Z') {
-		if (val > STRUCTURED_MAX_LEN / 26)
-			return -1;
 		val = val * 26 + (sym[*pos] - 'A');
+		/* Overflow check: the bound is small enough compared the max
+		 * int that we don't need to check before the multiplication */
 		if (val > STRUCTURED_MAX_LEN)
 			return -1;
 		(*pos)++;
